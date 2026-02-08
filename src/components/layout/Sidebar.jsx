@@ -1,9 +1,19 @@
 import { NavLink } from "react-router-dom";
-import { HiOutlineHome, HiOutlineTruck, HiOutlineUserGroup, HiOutlineUsers, HiOutlineLogout } from "react-icons/hi";
+import {
+  HiOutlineHome,
+  HiOutlineTruck,
+  HiOutlineUserGroup,
+  HiOutlineUsers,
+  HiOutlineLogout,
+  HiOutlineMap,
+  HiOutlineDocumentText,
+} from "react-icons/hi";
 import useAuth from "../../hooks/useAuth";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: HiOutlineHome },
+  { to: "/rides", label: "Ride Management", icon: HiOutlineMap },
+  { to: "/invoices", label: "Invoices", icon: HiOutlineDocumentText },
   { to: "/vehicles", label: "Vehicle Management", icon: HiOutlineTruck },
   { to: "/parties", label: "Party Management", icon: HiOutlineUserGroup },
   { to: "/partners", label: "Partner Management", icon: HiOutlineUsers },

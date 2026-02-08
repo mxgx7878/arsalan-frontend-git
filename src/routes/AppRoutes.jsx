@@ -4,6 +4,9 @@ import DashboardPage from "../pages/dashboard/DashboardPage";
 import VehiclesPage from "../pages/vehicles/VehiclesPage";
 import PartiesPage from "../pages/parties/PartiesPage";
 import PartnersPage from "../pages/partners/PartnersPage";
+import RidesPage from "../pages/rides/RidesPage";
+import RideDetailPage from "../pages/rides/RideDetailPage";
+import InvoicesPage from "../pages/invoices/InvoicesPage";
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -22,6 +25,9 @@ export default function AppRoutes() {
         }
       >
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/rides" element={<RidesPage />} />
+        <Route path="/rides/:id" element={<RideDetailPage />} />
+        <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/vehicles" element={<VehiclesPage />} />
         <Route path="/parties" element={<PartiesPage />} />
         <Route path="/partners" element={<PartnersPage />} />
