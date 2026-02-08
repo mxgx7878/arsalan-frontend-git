@@ -1,11 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { HiOutlineHome, HiOutlineTruck, HiOutlineUserGroup, HiOutlineLogout } from "react-icons/hi";
+import { HiOutlineHome, HiOutlineTruck, HiOutlineUserGroup, HiOutlineUsers, HiOutlineLogout } from "react-icons/hi";
 import useAuth from "../../hooks/useAuth";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: HiOutlineHome },
   { to: "/vehicles", label: "Vehicle Management", icon: HiOutlineTruck },
   { to: "/parties", label: "Party Management", icon: HiOutlineUserGroup },
+  { to: "/partners", label: "Partner Management", icon: HiOutlineUsers },
 ];
 
 export default function Sidebar({ open, onClose }) {
