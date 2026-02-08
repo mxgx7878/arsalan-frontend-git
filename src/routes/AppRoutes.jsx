@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "../pages/auth/LoginPage";
 import DashboardPage from "../pages/dashboard/DashboardPage";
 import VehiclesPage from "../pages/vehicles/VehiclesPage";
+import PartiesPage from "../pages/parties/PartiesPage";
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -21,6 +22,7 @@ export default function AppRoutes() {
       >
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/vehicles" element={<VehiclesPage />} />
+        <Route path="/parties" element={<PartiesPage />} />
       </Route>
 
       {/* Fallback */}
