@@ -7,6 +7,7 @@ import {
   HiOutlineLogout,
   HiOutlineMap,
   HiOutlineDocumentText,
+  HiOutlineCurrencyDollar,
 } from "react-icons/hi";
 import useAuth from "../../hooks/useAuth";
 
@@ -17,6 +18,7 @@ const navItems = [
   { to: "/vehicles", label: "Vehicle Management", icon: HiOutlineTruck },
   { to: "/parties", label: "Party Management", icon: HiOutlineUserGroup },
   { to: "/partners", label: "Partner Management", icon: HiOutlineUsers },
+  { to: "/company-expenses", label: "Company Expenses", icon: HiOutlineCurrencyDollar },
 ];
 
 export default function Sidebar({ open, onClose }) {
