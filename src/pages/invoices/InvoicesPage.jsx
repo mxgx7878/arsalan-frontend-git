@@ -11,6 +11,8 @@ import {
   HiOutlineX,
   HiOutlineDownload,
   HiOutlineCash,
+  HiOutlinePencil,
+  HiOutlineTrash,
 } from "react-icons/hi";
 
 // ─── Helpers ─────────────────────────────────────────────────
@@ -41,14 +43,209 @@ function StatCard({ label, value, color }) {
   );
 }
 
+// ─── Edit Invoice Modal ──────────────────────────────────────
+function EditInvoiceModal({ open, onClose, onSave, invoice }) {
+  const [form, setForm] = useState({
+    invoice_number: "",
+    invoice_date: "",
+    invoice_type: "balance",
+    amount: "",
+    payment_status: "unpaid",
+    payment_date: "",
+    description: "",
+    notes: "",
+  });
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open && invoice) {
+      setForm({
+        invoice_number: invoice.invoice_number || "",
+        invoice_date: invoice.invoice_date ? invoice.invoice_date.split("T")[0] : "",
+        invoice_type: invoice.invoice_type || "balance",
+        amount: invoice.amount || "",
+        payment_status: invoice.payment_status || "unpaid",
+        payment_date: invoice.payment_date ? invoice.payment_date.split("T")[0] : "",
+        description: invoice.description || "",
+        notes: invoice.notes || "",
+      });
+      setErrors({});
+    }
+  }, [open, invoice]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === "payment_status" && value === "unpaid") updated.payment_date = "";
+      if (name === "payment_status" && value === "paid" && !prev.payment_date) {
+        updated.payment_date = new Date().toISOString().split("T")[0];
+      }
+      return updated;
+    });
+    setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    setErrors({});
+    try {
+      const payload = {
+        invoice_number: form.invoice_number,
+        invoice_date: form.invoice_date,
+        invoice_type: form.invoice_type,
+        amount: Number(form.amount),
+        payment_status: form.payment_status,
+        payment_date: form.payment_status === "paid" ? (form.payment_date || new Date().toISOString().split("T")[0]) : null,
+        description: form.description || null,
+        notes: form.notes || null,
+      };
+      await invoiceApi.update(invoice.id, payload);
+      toast.success("Invoice updated successfully");
+      onSave();
+      onClose();
+    } catch (err) {
+      const res = err.response;
+      if (res?.status === 400 && res.data?.errors) setErrors(res.data.errors);
+      else toast.error(res?.data?.message || "Something went wrong");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-slate-900 flex items-center justify-between px-6 py-4 border-b border-slate-800 z-10">
+          <h3 className="text-lg font-semibold text-white">Edit Invoice</h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+            <HiOutlineX className="w-5 h-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Invoice Number */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Invoice Number <span className="text-red-400">*</span></label>
+            <input type="text" name="invoice_number" value={form.invoice_number} onChange={handleChange}
+              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${errors.invoice_number ? "border-red-500 focus:ring-red-500/30" : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"}`}
+            />
+            {errors.invoice_number && <p className="text-red-400 text-xs mt-1">{Array.isArray(errors.invoice_number) ? errors.invoice_number[0] : errors.invoice_number}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Invoice Date</label>
+              <input type="date" name="invoice_date" value={form.invoice_date} onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Type</label>
+              <select name="invoice_type" value={form.invoice_type} onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500">
+                <option value="advance">Advance</option>
+                <option value="balance">Balance</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Amount */}
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Amount <span className="text-red-400">*</span></label>
+            <input type="number" name="amount" value={form.amount} onChange={handleChange} placeholder="0.00" min="0" step="0.01"
+              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${errors.amount ? "border-red-500 focus:ring-red-500/30" : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"}`}
+            />
+            {errors.amount && <p className="text-red-400 text-xs mt-1">{Array.isArray(errors.amount) ? errors.amount[0] : errors.amount}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">Payment Status</label>
+              <select name="payment_status" value={form.payment_status} onChange={handleChange}
+                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500">
+                <option value="unpaid">Unpaid</option>
+                <option value="paid">Paid</option>
+              </select>
+            </div>
+            {form.payment_status === "paid" && (
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">Payment Date</label>
+                <input type="date" name="payment_date" value={form.payment_date} onChange={handleChange}
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Description</label>
+            <input type="text" name="description" value={form.description} onChange={handleChange} placeholder="Payment description"
+              className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Notes</label>
+            <textarea name="notes" value={form.notes} onChange={handleChange} rows={2} placeholder="Optional notes..."
+              className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">Cancel</button>
+            <button type="submit" disabled={saving} className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-400 disabled:bg-amber-500/50 text-slate-900 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+              {saving && <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin" />}
+              Update Invoice
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ─── Delete Invoice Modal ────────────────────────────────────
+function DeleteInvoiceModal({ open, onClose, onConfirm, invoice, deleting }) {
+  if (!open) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center">
+        <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+          <HiOutlineTrash className="w-6 h-6 text-red-400" />
+        </div>
+        <h3 className="text-lg font-semibold text-white">Delete Invoice</h3>
+        <p className="text-slate-400 text-sm mt-2">
+          Are you sure you want to delete{" "}
+          <span className="text-white font-medium">{invoice?.invoice_number}</span>
+          {" "}(Rs {formatAmount(invoice?.amount)})?
+          This action cannot be undone.
+        </p>
+        <div className="flex gap-3 mt-6">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-700 text-slate-300 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">Cancel</button>
+          <button onClick={onConfirm} disabled={deleting} className="flex-1 py-2.5 bg-red-500 hover:bg-red-400 disabled:bg-red-500/50 text-white rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+            {deleting && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Invoice View Modal ──────────────────────────────────────
-function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid }) {
+function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDelete }) {
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {
-    if (!open || !invoiceId) return;
+    if (!open || !invoiceId) { setInvoice(null); return; }
     setLoading(true);
     invoiceApi
       .getById(invoiceId)
@@ -125,12 +322,30 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid }) {
               </button>
             )}
             {invoice && (
+              <button
+                onClick={() => { onClose(); onEdit(invoice); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg text-xs transition-colors"
+              >
+                <HiOutlinePencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
+            {invoice && (
+              <button
+                onClick={() => { onClose(); onDelete(invoice); }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold rounded-lg text-xs transition-colors"
+              >
+                <HiOutlineTrash className="w-3.5 h-3.5" />
+                Delete
+              </button>
+            )}
+            {invoice && (
               <button onClick={handleDownloadPdf} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-xs transition-colors">
                 <HiOutlineDownload className="w-3.5 h-3.5" />
                 Print / PDF
               </button>
             )}
-            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors ml-1">
               <HiOutlineX className="w-5 h-5" />
             </button>
           </div>
@@ -204,7 +419,6 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid }) {
                 )}
               </div>
 
-              {/* Description & Notes */}
               {invoice.description && (
                 <div>
                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Description</p>
@@ -354,6 +568,15 @@ export default function InvoicesPage() {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [viewInvoiceId, setViewInvoiceId] = useState(null);
 
+  // Edit modal
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
+
+  // Delete modal
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Mark paid modal
   const [markPaidModalOpen, setMarkPaidModalOpen] = useState(false);
   const [markPaidTarget, setMarkPaidTarget] = useState(null);
@@ -397,6 +620,9 @@ export default function InvoicesPage() {
   useEffect(() => { fetchStats(); }, [fetchStats]);
   useEffect(() => { setPage(1); }, [search, statusFilter, typeFilter]);
 
+  const refreshAll = () => { fetchInvoices(); fetchStats(); };
+
+  // Mark paid
   const handleMarkPaidConfirm = async (payload) => {
     if (!markPaidTarget) return;
     setMarkingPaid(true);
@@ -405,8 +631,7 @@ export default function InvoicesPage() {
       toast.success("Invoice marked as paid");
       setMarkPaidModalOpen(false);
       setMarkPaidTarget(null);
-      fetchInvoices();
-      fetchStats();
+      refreshAll();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to mark as paid");
     } finally {
@@ -414,10 +639,27 @@ export default function InvoicesPage() {
     }
   };
 
-  const handleMarkPaidFromView = (invoice) => {
-    setMarkPaidTarget(invoice);
-    setMarkPaidModalOpen(true);
+  // Delete
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await invoiceApi.delete(deleteTarget.id);
+      toast.success("Invoice deleted successfully");
+      setDeleteModalOpen(false);
+      setDeleteTarget(null);
+      refreshAll();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to delete invoice");
+    } finally {
+      setDeleting(false);
+    }
   };
+
+  // Handlers from view modal
+  const handleMarkPaidFromView = (invoice) => { setMarkPaidTarget(invoice); setMarkPaidModalOpen(true); };
+  const handleEditFromView = (invoice) => { setEditTarget(invoice); setEditModalOpen(true); };
+  const handleDeleteFromView = (invoice) => { setDeleteTarget(invoice); setDeleteModalOpen(true); };
 
   return (
     <div className="space-y-6">
@@ -457,7 +699,7 @@ export default function InvoicesPage() {
           <option value="advance">Advance</option>
           <option value="balance">Balance</option>
         </select>
-        <button onClick={() => { fetchInvoices(); fetchStats(); }} className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Refresh">
+        <button onClick={refreshAll} className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors" title="Refresh">
           <HiOutlineRefresh className="w-4 h-4" />
         </button>
       </div>
@@ -521,6 +763,13 @@ export default function InvoicesPage() {
                         >
                           <HiOutlineEye className="w-4 h-4" />
                         </button>
+                        <button
+                          onClick={() => { setEditTarget(inv); setEditModalOpen(true); }}
+                          className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <HiOutlinePencil className="w-4 h-4" />
+                        </button>
                         {inv.payment_status === "unpaid" && (
                           <button
                             onClick={() => { setMarkPaidTarget(inv); setMarkPaidModalOpen(true); }}
@@ -530,6 +779,13 @@ export default function InvoicesPage() {
                             <HiOutlineCash className="w-4 h-4" />
                           </button>
                         )}
+                        <button
+                          onClick={() => { setDeleteTarget(inv); setDeleteModalOpen(true); }}
+                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -570,8 +826,34 @@ export default function InvoicesPage() {
       </div>
 
       {/* Modals */}
-      <InvoiceViewModal open={viewModalOpen} onClose={() => { setViewModalOpen(false); setViewInvoiceId(null); }} invoiceId={viewInvoiceId} onMarkPaid={handleMarkPaidFromView} />
-      <MarkPaidModal open={markPaidModalOpen} onClose={() => { setMarkPaidModalOpen(false); setMarkPaidTarget(null); }} onConfirm={handleMarkPaidConfirm} invoice={markPaidTarget} marking={markingPaid} />
+      <InvoiceViewModal
+        open={viewModalOpen}
+        onClose={() => { setViewModalOpen(false); setViewInvoiceId(null); }}
+        invoiceId={viewInvoiceId}
+        onMarkPaid={handleMarkPaidFromView}
+        onEdit={handleEditFromView}
+        onDelete={handleDeleteFromView}
+      />
+      <EditInvoiceModal
+        open={editModalOpen}
+        onClose={() => { setEditModalOpen(false); setEditTarget(null); }}
+        onSave={refreshAll}
+        invoice={editTarget}
+      />
+      <DeleteInvoiceModal
+        open={deleteModalOpen}
+        onClose={() => { setDeleteModalOpen(false); setDeleteTarget(null); }}
+        onConfirm={handleDeleteConfirm}
+        invoice={deleteTarget}
+        deleting={deleting}
+      />
+      <MarkPaidModal
+        open={markPaidModalOpen}
+        onClose={() => { setMarkPaidModalOpen(false); setMarkPaidTarget(null); }}
+        onConfirm={handleMarkPaidConfirm}
+        invoice={markPaidTarget}
+        marking={markingPaid}
+      />
     </div>
   );
 }
