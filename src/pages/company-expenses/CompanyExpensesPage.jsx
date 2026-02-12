@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import companyExpenseApi from "../../api/companyExpenseApi";
+import expenseCategoryApi from "../../api/expenseCategoryApi";
 import toast from "react-hot-toast";
 import {
   HiOutlinePlus,
@@ -36,7 +37,7 @@ function StatCard({ label, value, color }) {
     total: "text-blue-400",
     amount: "text-amber-400",
     average: "text-purple-400",
-    month: "text-emerald-400",
+    categories: "text-emerald-400",
   };
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -47,8 +48,9 @@ function StatCard({ label, value, color }) {
 }
 
 // ─── Expense Modal (Add / Edit) ──────────────────────────────
-function ExpenseModal({ open, onClose, onSave, expense }) {
+function ExpenseModal({ open, onClose, onSave, expense, categories }) {
   const [form, setForm] = useState({
+    category_id: "",
     expense_date: "",
     amount: "",
     description: "",
@@ -60,6 +62,7 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
   useEffect(() => {
     if (expense) {
       setForm({
+        category_id: expense.category_id || "",
         expense_date: expense.expense_date ? expense.expense_date.split("T")[0] : "",
         amount: expense.amount || "",
         description: expense.description || "",
@@ -67,6 +70,7 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
       });
     } else {
       setForm({
+        category_id: "",
         expense_date: new Date().toISOString().split("T")[0],
         amount: "",
         description: "",
@@ -89,6 +93,7 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
 
     try {
       const payload = {
+        category_id: Number(form.category_id),
         expense_date: form.expense_date,
         amount: Number(form.amount),
         description: form.description,
@@ -106,8 +111,8 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
       onClose();
     } catch (err) {
       const res = err.response;
-      if (res?.status === 400 && res.data?.error) {
-        setErrors(res.data.error);
+      if (res?.status === 400 && res.data?.errors) {
+        setErrors(res.data.errors);
       } else {
         toast.error(res?.data?.message || "Something went wrong");
       }
@@ -117,6 +122,8 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
   };
 
   if (!open) return null;
+
+  const activeCategories = categories.filter((c) => c.is_active || (expense && c.id === expense.category_id));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -134,53 +141,80 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Date */}
+          {/* Category */}
           <div>
             <label className="block text-sm font-medium text-slate-400 mb-1.5">
-              Date <span className="text-red-400">*</span>
+              Category <span className="text-red-400">*</span>
             </label>
-            <input
-              type="date"
-              name="expense_date"
-              value={form.expense_date}
+            <select
+              name="category_id"
+              value={form.category_id}
               onChange={handleChange}
               className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
-                errors.expense_date
+                errors.category_id
                   ? "border-red-500 focus:ring-red-500/30"
                   : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
               }`}
-            />
-            {errors.expense_date && (
+            >
+              <option value="" disabled>Select category</option>
+              {activeCategories.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            {errors.category_id && (
               <p className="text-red-400 text-xs mt-1">
-                {Array.isArray(errors.expense_date) ? errors.expense_date[0] : errors.expense_date}
+                {Array.isArray(errors.category_id) ? errors.category_id[0] : errors.category_id}
               </p>
             )}
           </div>
 
-          {/* Amount */}
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">
-              Amount <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="number"
-              name="amount"
-              value={form.amount}
-              onChange={handleChange}
-              placeholder="0.00"
-              min="0"
-              step="0.01"
-              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
-                errors.amount
-                  ? "border-red-500 focus:ring-red-500/30"
-                  : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
-              }`}
-            />
-            {errors.amount && (
-              <p className="text-red-400 text-xs mt-1">
-                {Array.isArray(errors.amount) ? errors.amount[0] : errors.amount}
-              </p>
-            )}
+          {/* Date & Amount row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                Date <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="date"
+                name="expense_date"
+                value={form.expense_date}
+                onChange={handleChange}
+                className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
+                  errors.expense_date
+                    ? "border-red-500 focus:ring-red-500/30"
+                    : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
+                }`}
+              />
+              {errors.expense_date && (
+                <p className="text-red-400 text-xs mt-1">
+                  {Array.isArray(errors.expense_date) ? errors.expense_date[0] : errors.expense_date}
+                </p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                Amount <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="number"
+                name="amount"
+                value={form.amount}
+                onChange={handleChange}
+                placeholder="0.00"
+                min="0"
+                step="0.01"
+                className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
+                  errors.amount
+                    ? "border-red-500 focus:ring-red-500/30"
+                    : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
+                }`}
+              />
+              {errors.amount && (
+                <p className="text-red-400 text-xs mt-1">
+                  {Array.isArray(errors.amount) ? errors.amount[0] : errors.amount}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Description */}
@@ -193,7 +227,7 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
               name="description"
               value={form.description}
               onChange={handleChange}
-              placeholder="e.g. Office rent, Fuel, Maintenance"
+              placeholder="e.g. Office electricity bill"
               className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
                 errors.description
                   ? "border-red-500 focus:ring-red-500/30"
@@ -218,17 +252,8 @@ function ExpenseModal({ open, onClose, onSave, expense }) {
               onChange={handleChange}
               rows={3}
               placeholder="Optional notes..."
-              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 resize-none ${
-                errors.notes
-                  ? "border-red-500 focus:ring-red-500/30"
-                  : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
-              }`}
+              className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500 resize-none"
             />
-            {errors.notes && (
-              <p className="text-red-400 text-xs mt-1">
-                {Array.isArray(errors.notes) ? errors.notes[0] : errors.notes}
-              </p>
-            )}
           </div>
 
           <div className="flex gap-3 pt-2">
@@ -268,9 +293,11 @@ function DeleteModal({ open, onClose, onConfirm, expense, deleting }) {
         </div>
         <h3 className="text-lg font-semibold text-white">Delete Expense</h3>
         <p className="text-slate-400 text-sm mt-2">
-          Are you sure you want to delete this expense of{" "}
-          <span className="text-white font-medium">Rs {formatAmount(expense?.amount)}</span>?
-          This action cannot be undone.
+          Are you sure you want to delete this expense
+          {expense?.description && (
+            <> — <span className="text-white font-medium">{expense.description}</span></>
+          )}
+          ? This action cannot be undone.
         </p>
         <div className="flex gap-3 mt-6">
           <button
@@ -298,20 +325,16 @@ function DeleteModal({ open, onClose, onConfirm, expense, deleting }) {
 // ─── Main CompanyExpensesPage ────────────────────────────────
 export default function CompanyExpensesPage() {
   const [expenses, setExpenses] = useState([]);
-  const [statistics, setStatistics] = useState({
-    total_expenses: 0,
-    total_amount: 0,
-    average_amount: 0,
-    current_month_total: 0,
-  });
+  const [stats, setStats] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [pagination, setPagination] = useState({
     current_page: 1,
     last_page: 1,
     total: 0,
-    per_page: 10,
   });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [page, setPage] = useState(1);
@@ -323,34 +346,79 @@ export default function CompanyExpensesPage() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
+  // Fetch categories for dropdown
+  const fetchCategories = useCallback(async () => {
+    try {
+      const res = await expenseCategoryApi.getAll({ per_page: 100 });
+      setCategories(res.data.data.data || []);
+    } catch {
+      // silent
+    }
+  }, []);
+
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
     try {
       const params = { page, per_page: 10 };
       if (search) params.search = search;
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
+      if (categoryFilter) params.category_id = categoryFilter;
+      if (startDate && endDate) {
+        params.start_date = startDate;
+        params.end_date = endDate;
+      }
 
       const res = await companyExpenseApi.getAll(params);
       const data = res.data.data;
-      setExpenses(data.expenses);
-      setStatistics(data.statistics);
-      setPagination(data.pagination);
+      setExpenses(data.data || []);
+      setPagination({
+        current_page: data.current_page,
+        last_page: data.last_page,
+        total: data.total,
+        from: data.from,
+        to: data.to,
+      });
     } catch {
       toast.error("Failed to load expenses");
     } finally {
       setLoading(false);
     }
-  }, [page, search, startDate, endDate]);
+  }, [page, search, categoryFilter, startDate, endDate]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const params = {};
+      if (categoryFilter) params.category_id = categoryFilter;
+      if (startDate && endDate) {
+        params.start_date = startDate;
+        params.end_date = endDate;
+      }
+      const res = await companyExpenseApi.statistics(params);
+      setStats(res.data.data);
+    } catch {
+      // silent
+    }
+  }, [categoryFilter, startDate, endDate]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   useEffect(() => {
     fetchExpenses();
   }, [fetchExpenses]);
 
-  // Reset page on filter change
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
   useEffect(() => {
     setPage(1);
-  }, [search, startDate, endDate]);
+  }, [search, categoryFilter, startDate, endDate]);
+
+  const refreshAll = () => {
+    fetchExpenses();
+    fetchStats();
+  };
 
   const handleAdd = () => {
     setEditExpense(null);
@@ -375,7 +443,7 @@ export default function CompanyExpensesPage() {
       toast.success("Expense deleted successfully");
       setDeleteModalOpen(false);
       setDeleteTarget(null);
-      fetchExpenses();
+      refreshAll();
     } catch (err) {
       toast.error(err.response?.data?.message || "Failed to delete expense");
     } finally {
@@ -383,7 +451,7 @@ export default function CompanyExpensesPage() {
     }
   };
 
-  const clearDateFilters = () => {
+  const handleClearDates = () => {
     setStartDate("");
     setEndDate("");
   };
@@ -406,55 +474,91 @@ export default function CompanyExpensesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Total Expenses" value={statistics.total_expenses} color="total" />
-        <StatCard label="Total Amount" value={`Rs ${formatAmount(statistics.total_amount)}`} color="amount" />
-        <StatCard label="Average" value={`Rs ${formatAmount(statistics.average_amount)}`} color="average" />
-        <StatCard label="This Month" value={`Rs ${formatAmount(statistics.current_month_total)}`} color="month" />
-      </div>
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <StatCard label="Total Expenses" value={stats.overall?.total_expenses ?? 0} color="total" />
+          <StatCard label="Total Amount" value={`Rs ${formatAmount(stats.overall?.total_amount ?? 0)}`} color="amount" />
+          <StatCard label="Average Expense" value={`Rs ${formatAmount(stats.overall?.average_expense ?? 0)}`} color="average" />
+          <StatCard label="Categories Used" value={stats.by_category?.length ?? 0} color="categories" />
+        </div>
+      )}
+
+      {/* Category Breakdown */}
+      {stats?.by_category && stats.by_category.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-3">Category Breakdown</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {stats.by_category.map((cat, idx) => (
+              <div key={idx} className="bg-slate-800 rounded-lg p-3">
+                <p className="text-white text-sm font-medium truncate">{cat.category?.name || "Uncategorized"}</p>
+                <p className="text-amber-400 text-lg font-bold mt-1">Rs {formatAmount(cat.total_amount)}</p>
+                <p className="text-slate-500 text-xs mt-0.5">{cat.count} expense{cat.count !== 1 ? "s" : ""}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by description or notes..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-          />
-        </div>
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-          title="Start date"
-        />
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-          title="End date"
-        />
-        {(startDate || endDate) && (
-          <button
-            onClick={clearDateFilters}
-            className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-red-400 hover:text-red-300 transition-colors"
-            title="Clear date filters"
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by description or notes..."
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+            />
+          </div>
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+            className="px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
           >
-            <HiOutlineX className="w-4 h-4" />
+            <option value="">All Categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <button
+            onClick={refreshAll}
+            className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            title="Refresh"
+          >
+            <HiOutlineRefresh className="w-4 h-4" />
           </button>
-        )}
-        <button
-          onClick={fetchExpenses}
-          className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-          title="Refresh"
-        >
-          <HiOutlineRefresh className="w-4 h-4" />
-        </button>
+        </div>
+
+        {/* Date range filter */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2">
+            <HiOutlineCalendar className="w-4 h-4 text-slate-500" />
+            <span className="text-sm text-slate-500">Date Range:</span>
+          </div>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+          />
+          <span className="text-slate-600 text-sm">to</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+          />
+          {(startDate || endDate) && (
+            <button
+              onClick={handleClearDates}
+              className="px-3 py-2.5 text-slate-400 hover:text-white text-xs border border-slate-800 rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -467,10 +571,10 @@ export default function CompanyExpensesPage() {
                   Date
                 </th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Description
+                  Category
                 </th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Notes
+                  Description
                 </th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Amount
@@ -498,17 +602,23 @@ export default function CompanyExpensesPage() {
               ) : (
                 expenses.map((exp) => (
                   <tr key={exp.id} className="hover:bg-slate-800/50 transition-colors">
+                    <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">
+                      {formatDate(exp.expense_date)}
+                    </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="flex items-center gap-1.5 text-slate-300 text-sm">
-                        <HiOutlineCalendar className="w-3.5 h-3.5 text-slate-500" />
-                        {formatDate(exp.expense_date)}
-                      </div>
+                      {exp.category ? (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-800 text-slate-300 border border-slate-700">
+                          {exp.category.name}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 text-xs">—</span>
+                      )}
                     </td>
-                    <td className="px-5 py-3.5 font-medium text-white">
-                      {exp.description}
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-400 max-w-[200px] truncate">
-                      {exp.notes || <span className="text-slate-600">—</span>}
+                    <td className="px-5 py-3.5 max-w-xs">
+                      <p className="text-white text-sm font-medium truncate">{exp.description}</p>
+                      {exp.notes && (
+                        <p className="text-slate-500 text-xs mt-0.5 truncate">{exp.notes}</p>
+                      )}
                     </td>
                     <td className="px-5 py-3.5 text-amber-400 whitespace-nowrap text-right font-medium">
                       Rs {formatAmount(exp.amount)}
@@ -546,7 +656,7 @@ export default function CompanyExpensesPage() {
             </p>
             <div className="flex items-center gap-1">
               <button
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
                 className="p-1.5 text-slate-400 hover:text-white disabled:text-slate-700 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
@@ -574,7 +684,7 @@ export default function CompanyExpensesPage() {
                   );
                 })}
               <button
-                onClick={() => setPage((prev) => Math.min(pagination.last_page, prev + 1))}
+                onClick={() => setPage((p) => Math.min(pagination.last_page, p + 1))}
                 disabled={page >= pagination.last_page}
                 className="p-1.5 text-slate-400 hover:text-white disabled:text-slate-700 disabled:cursor-not-allowed rounded-lg transition-colors"
               >
@@ -589,8 +699,9 @@ export default function CompanyExpensesPage() {
       <ExpenseModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onSave={fetchExpenses}
+        onSave={refreshAll}
         expense={editExpense}
+        categories={categories}
       />
       <DeleteModal
         open={deleteModalOpen}

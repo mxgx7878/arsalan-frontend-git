@@ -8,6 +8,7 @@ import RidesPage from "../pages/rides/RidesPage";
 import RideDetailPage from "../pages/rides/RideDetailPage";
 import InvoicesPage from "../pages/invoices/InvoicesPage";
 import CompanyExpensesPage from "../pages/company-expenses/CompanyExpensesPage";
+import ExpenseCategoriesPage from "../pages/expense-categories/ExpenseCategoriesPage";
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -33,6 +34,7 @@ export default function AppRoutes() {
         <Route path="/parties" element={<PartiesPage />} />
         <Route path="/partners" element={<PartnersPage />} />
         <Route path="/company-expenses" element={<CompanyExpensesPage />} />
+        <Route path="/expense-categories" element={<ExpenseCategoriesPage />} />
       </Route>
 
       {/* Fallback */}
