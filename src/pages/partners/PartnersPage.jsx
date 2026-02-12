@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import partnerApi from "../../api/partnerApi";
 import toast from "react-hot-toast";
 import {
@@ -13,6 +14,7 @@ import {
   HiOutlineRefresh,
   HiOutlineMail,
   HiOutlinePhone,
+  HiOutlineBookOpen,
 } from "react-icons/hi";
 
 // ─── Stats Card ──────────────────────────────────────────────
@@ -57,39 +59,29 @@ function PartnerModal({ open, onClose, onSave, partner }) {
   }, [partner, open]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm({ ...form, [name]: value });
-    setErrors({ ...errors, [name]: "" });
+    const { name, value, type, checked } = e.target;
+    setForm({ ...form, [name]: type === "checkbox" ? checked : value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
     setErrors({});
-
     try {
-      const payload = {
-        name: form.name,
-        phone: form.phone || null,
-        email: form.email || null,
-        is_active: form.is_active,
-      };
-
       if (partner) {
-        await partnerApi.update(partner.id, payload);
+        await partnerApi.update(partner.id, form);
         toast.success("Partner updated successfully");
       } else {
-        await partnerApi.create(payload);
+        await partnerApi.create(form);
         toast.success("Partner added successfully");
       }
       onSave();
       onClose();
     } catch (err) {
-      const res = err.response;
-      if (res?.status === 400 && res.data?.error) {
-        setErrors(res.data.error);
+      if (err.response?.data?.errors) {
+        setErrors(err.response.data.errors);
       } else {
-        toast.error(res?.data?.message || "Something went wrong");
+        toast.error(err.response?.data?.message || "Something went wrong");
       }
     } finally {
       setSaving(false);
@@ -102,95 +94,70 @@ function PartnerModal({ open, onClose, onSave, partner }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <h3 className="text-lg font-semibold text-white">
             {partner ? "Edit Partner" : "Add Partner"}
           </h3>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Name */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">
-              Name <span className="text-red-400">*</span>
-            </label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Name *</label>
             <input
-              type="text"
               name="name"
               value={form.name}
               onChange={handleChange}
-              placeholder="e.g. Ahmed Logistics"
-              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
+              placeholder="Partner name"
+              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
                 errors.name
                   ? "border-red-500 focus:ring-red-500/30"
                   : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
               }`}
             />
-            {errors.name && (
-              <p className="text-red-400 text-xs mt-1">{errors.name[0]}</p>
-            )}
+            {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name[0]}</p>}
           </div>
 
-          {/* Phone */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">
-              Phone
-            </label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Phone</label>
             <input
-              type="text"
               name="phone"
               value={form.phone}
               onChange={handleChange}
-              placeholder="e.g. +92 300 1234567"
-              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
+              placeholder="Phone number"
+              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
                 errors.phone
                   ? "border-red-500 focus:ring-red-500/30"
                   : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
               }`}
             />
-            {errors.phone && (
-              <p className="text-red-400 text-xs mt-1">{errors.phone[0]}</p>
-            )}
+            {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone[0]}</p>}
           </div>
 
-          {/* Email */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Email</label>
             <input
-              type="email"
               name="email"
               value={form.email}
               onChange={handleChange}
-              placeholder="e.g. partner@example.com"
-              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
+              placeholder="Email address"
+              className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
                 errors.email
                   ? "border-red-500 focus:ring-red-500/30"
                   : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
               }`}
             />
-            {errors.email && (
-              <p className="text-red-400 text-xs mt-1">{errors.email[0]}</p>
-            )}
+            {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email[0]}</p>}
           </div>
 
-          {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1.5">
-              Status
-            </label>
+            <label className="block text-sm font-medium text-slate-400 mb-1.5">Status</label>
             <select
               name="is_active"
               value={form.is_active ? "true" : "false"}
-              onChange={(e) =>
-                setForm({ ...form, is_active: e.target.value === "true" })
-              }
+              onChange={(e) => setForm({ ...form, is_active: e.target.value === "true" })}
               className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
             >
               <option value="true">Active</option>
@@ -264,6 +231,7 @@ function DeleteModal({ open, onClose, onConfirm, partner, deleting }) {
 
 // ─── Main PartnersPage ───────────────────────────────────────
 export default function PartnersPage() {
+  const navigate = useNavigate();
   const [partners, setPartners] = useState([]);
   const [statistics, setStatistics] = useState({
     total_partners: 0,
@@ -312,13 +280,14 @@ export default function PartnersPage() {
     fetchPartners();
   }, [fetchPartners]);
 
-  useEffect(() => {
+  const handleSearch = (e) => {
+    setSearch(e.target.value);
     setPage(1);
-  }, [search, statusFilter]);
+  };
 
-  const handleAdd = () => {
-    setEditPartner(null);
-    setModalOpen(true);
+  const handleStatusFilter = (value) => {
+    setStatusFilter(value);
+    setPage(1);
   };
 
   const handleEdit = (partner) => {
@@ -341,17 +310,17 @@ export default function PartnersPage() {
       setDeleteTarget(null);
       fetchPartners();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete partner");
+      const msg = err.response?.data?.message || "Failed to delete partner";
+      toast.error(msg);
     } finally {
       setDeleting(false);
     }
   };
 
   const handleStatusToggle = async (partner) => {
-    const newStatus = !partner.is_active;
     try {
-      await partnerApi.updateStatus(partner.id, newStatus);
-      toast.success(`Partner marked ${newStatus ? "active" : "inactive"}`);
+      await partnerApi.updateStatus(partner.id, !partner.is_active);
+      toast.success(`Partner ${partner.is_active ? "deactivated" : "activated"}`);
       fetchPartners();
     } catch {
       toast.error("Failed to update status");
@@ -361,14 +330,17 @@ export default function PartnersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-white">Partner Management</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Manage your transport partners</p>
+          <h1 className="text-xl font-bold text-white flex items-center gap-2">
+            <HiOutlineUsers className="w-6 h-6 text-amber-500" />
+            Partner Management
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">Manage your transport partners</p>
         </div>
         <button
-          onClick={handleAdd}
-          className="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-sm transition-colors"
+          onClick={() => { setEditPartner(null); setModalOpen(true); }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-amber-500 text-slate-900 text-sm font-bold hover:bg-amber-400 transition-colors"
         >
           <HiOutlinePlus className="w-4 h-4" />
           Add Partner
@@ -376,7 +348,7 @@ export default function PartnersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard label="Total Partners" value={statistics.total_partners} color="total" />
         <StatCard label="Active" value={statistics.active_partners} color="active" />
         <StatCard label="Inactive" value={statistics.inactive_partners} color="inactive" />
@@ -384,33 +356,41 @@ export default function PartnersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, phone or email..."
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-          />
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4" />
+            <input
+              type="text"
+              value={search}
+              onChange={handleSearch}
+              placeholder="Search partners..."
+              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+            />
+          </div>
+          <div className="flex gap-2">
+            {["", "1", "0"].map((val) => (
+              <button
+                key={val}
+                onClick={() => handleStatusFilter(val)}
+                className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  statusFilter === val
+                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/30"
+                    : "text-slate-400 border border-slate-700 hover:text-white hover:bg-slate-800"
+                }`}
+              >
+                {val === "" ? "All" : val === "1" ? "Active" : "Inactive"}
+              </button>
+            ))}
+            <button
+              onClick={() => { setSearch(""); setStatusFilter(""); setPage(1); }}
+              className="p-2 rounded-lg text-slate-400 hover:text-white border border-slate-700 hover:bg-slate-800 transition-colors"
+              title="Reset filters"
+            >
+              <HiOutlineRefresh className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 bg-slate-900 border border-slate-800 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-        >
-          <option value="">All Status</option>
-          <option value="1">Active</option>
-          <option value="0">Inactive</option>
-        </select>
-        <button
-          onClick={fetchPartners}
-          className="p-2.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
-          title="Refresh"
-        >
-          <HiOutlineRefresh className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Table */}
@@ -419,113 +399,104 @@ export default function PartnersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-800">
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Contact
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Rides
-                </th>
-                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Name</th>
+                <th className="text-left px-5 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Contact</th>
+                <th className="text-center px-5 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Rides</th>
+                <th className="text-center px-5 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Status</th>
+                <th className="text-right px-5 py-3 text-xs text-slate-500 uppercase tracking-wider font-medium">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-12">
-                    <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-slate-500 text-sm mt-3">Loading partners...</p>
-                  </td>
-                </tr>
-              ) : partners.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-12">
-                    <HiOutlineUsers className="w-10 h-10 text-slate-700 mx-auto" />
-                    <p className="text-slate-500 text-sm mt-3">No partners found</p>
-                  </td>
-                </tr>
-              ) : (
-                partners.map((p) => (
-                  <tr key={p.id} className="hover:bg-slate-800/50 transition-colors">
-                    <td className="px-5 py-3.5 font-medium text-white whitespace-nowrap">
-                      {p.name}
-                    </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <div className="space-y-0.5">
-                        {p.phone && (
-                          <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-                            <HiOutlinePhone className="w-3.5 h-3.5" />
-                            {p.phone}
-                          </div>
-                        )}
-                        {p.email && (
-                          <div className="flex items-center gap-1.5 text-slate-400 text-xs">
-                            <HiOutlineMail className="w-3.5 h-3.5" />
-                            {p.email}
-                          </div>
-                        )}
-                        {!p.phone && !p.email && (
-                          <span className="text-slate-600 text-xs">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">
-                      {p.rides_count ?? 0}
-                    </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap">
-                      <button
-                        onClick={() => handleStatusToggle(p)}
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer transition-colors ${
-                          p.is_active
-                            ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
-                            : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            p.is_active ? "bg-emerald-400" : "bg-red-400"
-                          }`}
-                        />
-                        {p.is_active ? "active" : "inactive"}
-                      </button>
-                    </td>
-                    <td className="px-5 py-3.5 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          onClick={() => handleEdit(p)}
-                          className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <HiOutlinePencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(p)}
-                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </div>
+            <tbody className="divide-y divide-slate-800/50">
+              {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <tr key={i}>
+                      {Array.from({ length: 5 }).map((_, j) => (
+                        <td key={j} className="px-5 py-3.5">
+                          <div className="h-4 bg-slate-800 rounded animate-pulse" />
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                : partners.length === 0
+                ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-12 text-center">
+                      <HiOutlineUsers className="w-8 h-8 text-slate-700 mx-auto" />
+                      <p className="text-slate-500 text-sm mt-2">No partners found</p>
                     </td>
                   </tr>
-                ))
-              )}
+                )
+                : partners.map((p) => (
+                    <tr key={p.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="px-5 py-3.5">
+                        <span className="text-white font-medium">{p.name}</span>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <div className="space-y-0.5">
+                          {p.phone && (
+                            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                              <HiOutlinePhone className="w-3 h-3" /> {p.phone}
+                            </div>
+                          )}
+                          {p.email && (
+                            <div className="flex items-center gap-1.5 text-slate-400 text-xs">
+                              <HiOutlineMail className="w-3 h-3" /> {p.email}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-center text-slate-300">
+                        {p.rides_count ?? 0}
+                      </td>
+                      <td className="px-5 py-3.5 text-center">
+                        <button
+                          onClick={() => handleStatusToggle(p)}
+                          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                            p.is_active
+                              ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
+                              : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          }`}
+                        >
+                          {p.is_active ? "Active" : "Inactive"}
+                        </button>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => navigate(`/partners/${p.id}/ledger`)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+                            title="View Ledger"
+                          >
+                            <HiOutlineBookOpen className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(p)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                            title="Edit"
+                          >
+                            <HiOutlinePencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteClick(p)}
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                            title="Delete"
+                          >
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+              }
             </tbody>
           </table>
         </div>
 
         {/* Pagination */}
         {pagination.last_page > 1 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-slate-800">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-800">
             <p className="text-xs text-slate-500">
-              Showing {pagination.from || 0}–{pagination.to || 0} of {pagination.total}
+              Page {pagination.current_page} of {pagination.last_page} ({pagination.total} total)
             </p>
             <div className="flex items-center gap-1">
               <button
@@ -538,14 +509,13 @@ export default function PartnersPage() {
               {Array.from({ length: pagination.last_page }, (_, i) => i + 1)
                 .filter((p) => p === 1 || p === pagination.last_page || Math.abs(p - page) <= 1)
                 .map((p, idx, arr) => {
-                  const prev = arr[idx - 1];
-                  const showDots = prev && p - prev > 1;
+                  const showEllipsis = idx > 0 && p - arr[idx - 1] > 1;
                   return (
-                    <span key={p} className="flex items-center">
-                      {showDots && <span className="px-1 text-slate-600 text-xs">…</span>}
+                    <span key={p}>
+                      {showEllipsis && <span className="px-1 text-slate-600">…</span>}
                       <button
                         onClick={() => setPage(p)}
-                        className={`w-8 h-8 rounded-lg text-xs font-medium transition-colors ${
+                        className={`min-w-[32px] h-8 rounded-lg text-xs font-medium transition-colors ${
                           p === page
                             ? "bg-amber-500 text-slate-900"
                             : "text-slate-400 hover:bg-slate-800 hover:text-white"
