@@ -56,6 +56,7 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
         booking_amount: ride.booking_amount || "",
         advance_amount: ride.advance_amount || "",
         notes: ride.notes || "",
+        route: ride.route || "",
       });
     } else {
       setForm({
@@ -68,6 +69,7 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
         booking_amount: "",
         advance_amount: "",
         notes: "",
+        route:""
       });
     }
     setErrors({});
@@ -101,6 +103,7 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
         booking_amount: Number(form.booking_amount),
         advance_amount: form.advance_amount ? Number(form.advance_amount) : 0,
         notes: form.notes || null,
+        route: form.route || null,
       };
 
       if (ride) {
@@ -336,7 +339,27 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
                 )}
               </div>
             </div>
-
+            {/* Route */}
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                Route
+              </label>
+              <input
+                type="text"
+                name="route"
+                value={form.route}
+                onChange={handleChange}
+                placeholder="e.g. Karachi → Lahore"
+                className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
+                  errors.route
+                    ? "border-red-500 focus:ring-red-500/30"
+                    : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
+                }`}
+              />
+              {errors.route && (
+                <p className="text-red-400 text-xs mt-1">{Array.isArray(errors.route) ? errors.route[0] : errors.route}</p>
+              )}
+            </div>
             {/* Notes */}
             <div>
               <label className="block text-sm font-medium text-slate-400 mb-1.5">

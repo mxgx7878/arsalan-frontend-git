@@ -376,6 +376,9 @@ export default function RidesPage() {
                   Party
                 </th>
                 <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  Route
+                </th>
+                <th className="text-left px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Type
                 </th>
                 <th className="text-right px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -418,6 +421,9 @@ export default function RidesPage() {
                     </td>
                     <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap">
                       {r.party?.name || "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-slate-400 whitespace-nowrap max-w-[200px] truncate" title={r.route || ""}>
+                      {r.route || "—"}
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span

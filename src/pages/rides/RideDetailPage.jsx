@@ -604,6 +604,7 @@ export default function RideDetailPage() {
               <span className="text-slate-500 text-sm">Type</span>
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ride.ride_type === "partner" ? "bg-purple-500/10 text-purple-400" : "bg-blue-500/10 text-blue-400"}`}>{ride.ride_type}</span>
             </div>
+            {ride.route && <div className="pt-1"><span className="text-slate-500 text-xs">Route</span><p className="text-white text-sm mt-0.5 font-medium">{ride.route}</p></div>}
             {ride.notes && <div className="pt-1"><span className="text-slate-500 text-xs">Notes</span><p className="text-slate-300 text-sm mt-0.5 whitespace-pre-wrap">{ride.notes}</p></div>}
           </div>
         </div>
