@@ -8,6 +8,7 @@ const vehicleApi = {
   updateStatus: (id, status) => API.patch(`/vehicles/${id}/status`, { status }),
   delete: (id) => API.delete(`/vehicles/${id}`),
   getByPartner: (partnerId) => API.get(`/vehicles/partner/${partnerId}`),
+  getPersonal: () => API.get("/vehicles/personal"),
 };
 
 export default vehicleApi;
