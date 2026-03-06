@@ -8,7 +8,6 @@ import { HiOutlineX } from "react-icons/hi";
 
 export default function RideModal({ open, onClose, onSave, ride, preSelectedPartyId = null }) {
   const [form, setForm] = useState({
-    ride_number: "",
     start_date: "",
     vehicle_id: "",
     party_id: "",
@@ -18,6 +17,7 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
     advance_amount: "",
     notes: "",
     route: "",
+    container_no: "",
   });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
@@ -52,7 +52,6 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
   useEffect(() => {
     if (ride) {
       setForm({
-        ride_number: ride.ride_number || "",
         start_date: ride.start_date ? ride.start_date.split("T")[0] : "",
         vehicle_id: ride.vehicle_id ? String(ride.vehicle_id) : "",
         party_id: ride.party_id ? String(ride.party_id) : "",
@@ -62,10 +61,10 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
         advance_amount: ride.advance_amount || "",
         notes: ride.notes || "",
         route: ride.route || "",
+        container_no: ride.container_no || "",
       });
     } else {
       setForm({
-        ride_number: "",
         start_date: "",
         vehicle_id: "",
         party_id: preSelectedPartyId ? String(preSelectedPartyId) : "",
@@ -75,6 +74,7 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
         advance_amount: "",
         notes: "",
         route: "",
+        container_no: "",
       });
     }
     setErrors({});
@@ -133,7 +133,6 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
 
     try {
       const payload = {
-        ride_number: form.ride_number,
         start_date: form.start_date,
         vehicle_id: Number(form.vehicle_id),
         party_id: Number(form.party_id),
@@ -143,6 +142,7 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
         advance_amount: form.advance_amount ? Number(form.advance_amount) : 0,
         notes: form.notes || null,
         route: form.route || null,
+        container_no: form.container_no || null,
       };
 
       if (ride) {
@@ -196,51 +196,27 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Ride Number + Date */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1.5">
-                  Ride Number <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="ride_number"
-                  value={form.ride_number}
-                  onChange={handleChange}
-                  placeholder="e.g. RD-001"
-                  className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 ${
-                    errors.ride_number
-                      ? "border-red-500 focus:ring-red-500/30"
-                      : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
-                  }`}
-                />
-                {errors.ride_number && (
-                  <p className="text-red-400 text-xs mt-1">
-                    {Array.isArray(errors.ride_number) ? errors.ride_number[0] : errors.ride_number}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-400 mb-1.5">
-                  Start Date <span className="text-red-400">*</span>
-                </label>
-                <input
-                  type="date"
-                  name="start_date"
-                  value={form.start_date}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
-                    errors.start_date
-                      ? "border-red-500 focus:ring-red-500/30"
-                      : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
-                  }`}
-                />
-                {errors.start_date && (
-                  <p className="text-red-400 text-xs mt-1">
-                    {Array.isArray(errors.start_date) ? errors.start_date[0] : errors.start_date}
-                  </p>
-                )}
-              </div>
+            {/* Start Date */}
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-1.5">
+                Start Date <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="date"
+                name="start_date"
+                value={form.start_date}
+                onChange={handleChange}
+                className={`w-full px-4 py-2.5 bg-slate-800 border rounded-lg text-white text-sm focus:outline-none focus:ring-2 ${
+                  errors.start_date
+                    ? "border-red-500 focus:ring-red-500/30"
+                    : "border-slate-700 focus:ring-amber-500/30 focus:border-amber-500"
+                }`}
+              />
+              {errors.start_date && (
+                <p className="text-red-400 text-xs mt-1">
+                  {Array.isArray(errors.start_date) ? errors.start_date[0] : errors.start_date}
+                </p>
+              )}
             </div>
 
             {/* Party */}
@@ -426,17 +402,30 @@ export default function RideModal({ open, onClose, onSave, ride, preSelectedPart
               </div>
             </div>
 
-            {/* Route */}
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1.5">Route</label>
-              <input
-                type="text"
-                name="route"
-                value={form.route}
-                onChange={handleChange}
-                placeholder="e.g. Karachi → Lahore"
-                className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
-              />
+            {/* Route + Container No */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">Route</label>
+                <input
+                  type="text"
+                  name="route"
+                  value={form.route}
+                  onChange={handleChange}
+                  placeholder="e.g. Karachi → Lahore"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-1.5">Container No</label>
+                <input
+                  type="text"
+                  name="container_no"
+                  value={form.container_no}
+                  onChange={handleChange}
+                  placeholder="e.g. CSNU1234567"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500"
+                />
+              </div>
             </div>
 
             {/* Notes */}
