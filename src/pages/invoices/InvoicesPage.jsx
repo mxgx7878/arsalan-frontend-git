@@ -241,19 +241,46 @@ function DeleteInvoiceModal({ open, onClose, onConfirm, invoice, deleting }) {
 // ─── Invoice View Modal ──────────────────────────────────────
 function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDelete }) {
   const [invoice, setInvoice] = useState(null);
+  const [rideData, setRideData] = useState(null);
   const [loading, setLoading] = useState(false);
   const printRef = useRef(null);
 
   useEffect(() => {
-    if (!open || !invoiceId) { setInvoice(null); return; }
+    if (!open || !invoiceId) {
+      setInvoice(null);
+      setRideData(null);
+      return;
+    }
     setLoading(true);
     invoiceApi
       .getById(invoiceId)
-      .then((res) => setInvoice(res.data.data))
+      .then(async (res) => {
+        const inv = res.data.data;
+        setInvoice(inv);
+        // Also fetch ride details to get expenses + financial summary
+        if (inv?.ride_id) {
+          try {
+            const rideRes = await rideApi.getById(inv.ride_id);
+            setRideData(rideRes.data.data);
+          } catch {
+            // non-fatal — ride data is supplementary
+          }
+        }
+      })
       .catch(() => toast.error("Failed to load invoice"))
       .finally(() => setLoading(false));
   }, [open, invoiceId]);
 
+  // ── Derived financials from ride data ──────────────────────
+  const bookingAmount    = Number(rideData?.ride?.booking_amount ?? 0);
+  const allExpenses      = rideData?.expenses ?? [];
+  const partyExpenses    = allExpenses.filter((e) => e.expense_type === "party");
+  const partyTotal       = partyExpenses.reduce((s, e) => s + Number(e.expense_amount), 0);
+  const totalBillable    = bookingAmount + partyTotal;
+  const totalPaid        = Number(rideData?.invoice_summary?.total_paid ?? 0);
+  const balanceDue       = totalBillable - totalPaid;
+
+  // ── Print handler ───────────────────────────────────────────
   const handleDownloadPdf = () => {
     if (!printRef.current) return;
     const printContent = printRef.current.innerHTML;
@@ -265,111 +292,36 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDele
         <title>Billing Invoice ${invoice?.invoice_number || ""}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body {
-            font-family: Arial, sans-serif;
-            background: #fff;
-            color: #000;
-            padding: 30px 40px;
-            font-size: 13px;
-          }
+          body { font-family: Arial, sans-serif; background: #fff; color: #000; padding: 30px 40px; font-size: 13px; }
           .inv-wrapper { max-width: 780px; margin: 0 auto; border: 1px solid #ccc; }
-
-          /* ── Top header ── */
           .inv-title-block { text-align: center; padding: 10px 0 4px; border-bottom: 1px solid #ccc; }
           .inv-title-block .billing-invoice { font-size: 15px; font-weight: bold; letter-spacing: 1px; }
-          .inv-title-block .company-name    { font-size: 16px; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
-
-          /* ── Amber banner ── */
-          .amber-banner {
-            background: #f59e0b;
-            color: #000;
-            text-align: center;
-            font-weight: bold;
-            font-size: 12px;
-            padding: 5px 10px;
-            letter-spacing: 0.5px;
-          }
-
-          /* ── Contact block ── */
+          .inv-title-block .company-name { font-size: 16px; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
+          .amber-banner { background: #f59e0b; color: #000; text-align: center; font-weight: bold; font-size: 12px; padding: 5px 10px; }
           .contact-block { padding: 6px 12px; border-bottom: 1px solid #ccc; }
-          .contact-block .owner  { font-weight: bold; font-size: 13px; }
-          .contact-block .cell   { font-size: 12px; margin-top: 2px; }
+          .contact-block .owner { font-weight: bold; font-size: 13px; }
+          .contact-block .cell { font-size: 12px; margin-top: 2px; }
           .contact-block .cell span { font-weight: bold; margin-right: 6px; }
-
-          /* ── Party / Date / Bill row ── */
-          .meta-row {
-            display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            padding: 8px 12px;
-            border-bottom: 2px solid #f59e0b;
-            gap: 12px;
-          }
+          .meta-row { display: flex; align-items: flex-end; justify-content: space-between; padding: 8px 12px; border-bottom: 2px solid #f59e0b; gap: 12px; }
           .meta-row .party-block { flex: 1; }
           .meta-row .party-block label { font-weight: bold; font-size: 13px; margin-right: 8px; }
-          .meta-row .party-block .underline-val {
-            display: inline-block;
-            min-width: 200px;
-            border-bottom: 1.5px solid #000;
-            font-size: 13px;
-            padding-bottom: 1px;
-          }
+          .meta-row .party-block .underline-val { display: inline-block; min-width: 200px; border-bottom: 1.5px solid #000; font-size: 13px; padding-bottom: 1px; }
           .meta-row .right-block { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
           .meta-row .right-block .field-line { display: flex; align-items: flex-end; gap: 6px; }
           .meta-row .right-block .field-line label { font-weight: bold; font-size: 12px; white-space: nowrap; }
-          .meta-row .right-block .field-line .underline-val {
-            display: inline-block;
-            min-width: 130px;
-            border-bottom: 1.5px solid #000;
-            font-size: 12px;
-            padding-bottom: 1px;
-            text-align: left;
-          }
-
-          /* ── Table ── */
+          .meta-row .right-block .field-line .underline-val { display: inline-block; min-width: 130px; border-bottom: 1.5px solid #000; font-size: 12px; padding-bottom: 1px; text-align: left; }
           .inv-table { width: 100%; border-collapse: collapse; }
-          .inv-table th {
-            background: #fff;
-            border: 1px solid #bbb;
-            padding: 6px 8px;
-            font-weight: bold;
-            font-size: 12px;
-            text-align: center;
-          }
-          .inv-table td {
-            border: 1px solid #bbb;
-            padding: 5px 8px;
-            font-size: 12px;
-            text-align: center;
-            height: 22px;
-          }
-          .inv-table td.left-td  { text-align: left; }
+          .inv-table th { background: #fff; border: 1px solid #bbb; padding: 6px 8px; font-weight: bold; font-size: 12px; text-align: center; }
+          .inv-table td { border: 1px solid #bbb; padding: 5px 8px; font-size: 12px; text-align: center; height: 22px; }
+          .inv-table td.left-td { text-align: left; }
           .inv-table td.right-td { text-align: right; }
-          .inv-table .grand-row td {
-            font-weight: bold;
-            font-size: 13px;
-            background: #fafafa;
-          }
-
-          /* ── Footer address ── */
-          .inv-footer {
-            background: #f59e0b;
-            color: #000;
-            text-align: center;
-            font-size: 10.5px;
-            font-weight: bold;
-            padding: 5px 10px;
-            letter-spacing: 0.3px;
-          }
-
-          @media print {
-            body { padding: 10px; }
-            .inv-wrapper { border: none; }
-          }
+          .inv-table .grand-row td { font-weight: bold; font-size: 13px; background: #fafafa; }
+          .inv-footer { background: #f59e0b; color: #000; text-align: center; font-size: 10.5px; font-weight: bold; padding: 5px 10px; }
+          @media print { body { padding: 10px; } .inv-wrapper { border: none; } }
         </style>
       </head>
       <body>
-        ${printContent}
+        ${printRef.current.innerHTML}
         <script>window.onload = function() { window.print(); window.close(); }<\/script>
       </body>
       </html>
@@ -382,17 +334,17 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDele
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="sticky top-0 bg-slate-900 flex items-center justify-between px-6 py-4 border-b border-slate-800 z-10">
-          <h3 className="text-lg font-semibold text-white">Invoice Details</h3>
+      <div className="relative bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl max-h-[92vh] flex flex-col">
+
+        {/* ── Modal Header ─────────────────────────────────── */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 flex-shrink-0">
+          <h3 className="text-base font-semibold text-white">Invoice Details</h3>
           <div className="flex items-center gap-2">
-            {invoice && invoice.payment_status === "unpaid" && (
+            {invoice?.payment_status === "unpaid" && (
               <button
                 onClick={() => { onClose(); onMarkPaid(invoice); }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-white font-semibold rounded-lg text-xs transition-colors"
               >
-                <HiOutlineCash className="w-3.5 h-3.5" />
                 Mark Paid
               </button>
             )}
@@ -401,8 +353,7 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDele
                 onClick={() => { onClose(); onEdit(invoice); }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white font-semibold rounded-lg text-xs transition-colors"
               >
-                <HiOutlinePencil className="w-3.5 h-3.5" />
-                Edit
+                ✏ Edit
               </button>
             )}
             {invoice && (
@@ -410,220 +361,298 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDele
                 onClick={() => { onClose(); onDelete(invoice); }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 font-semibold rounded-lg text-xs transition-colors"
               >
-                <HiOutlineTrash className="w-3.5 h-3.5" />
-                Delete
+                🗑 Delete
               </button>
             )}
             {invoice && (
-              <button onClick={handleDownloadPdf} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-xs transition-colors">
-                <HiOutlineDownload className="w-3.5 h-3.5" />
-                Print / PDF
+              <button
+                onClick={handleDownloadPdf}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-semibold rounded-lg text-xs transition-colors"
+              >
+                ⬇ Print / PDF
               </button>
             )}
-            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors ml-1">
-              <HiOutlineX className="w-5 h-5" />
-            </button>
+            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors ml-1">✕</button>
           </div>
         </div>
 
-        {loading ? (
-          <div className="p-12 text-center">
-            <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-          </div>
-        ) : invoice ? (
-          <div className="p-6">
-            {/* On-screen preview */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
-              {/* Top */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-amber-500">ILAYS&SONS</h2>
-                  <p className="text-slate-500 text-xs uppercase tracking-wider">Transport</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-white">INVOICE</p>
-                  <p className="text-slate-400 text-sm mt-0.5">{invoice.invoice_number}</p>
+        {/* ── Scrollable body ──────────────────────────────── */}
+        <div className="overflow-y-auto flex-1">
+          {loading ? (
+            <div className="p-16 flex items-center justify-center">
+              <div className="w-7 h-7 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : invoice ? (
+            <div className="p-6 space-y-5">
+
+              {/* ── Company + Invoice # banner ─────────────── */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                {/* Amber top stripe */}
+                <div className="h-1 bg-amber-500 w-full" />
+                <div className="flex items-start justify-between p-5">
+                  {/* Left: company */}
+                  <div>
+                    <h2 className="text-amber-500 font-bold text-xl tracking-wide">ILAYS&SONS</h2>
+                    <p className="text-slate-500 text-xs uppercase tracking-widest mt-0.5">Transport</p>
+                    <p className="text-slate-600 text-xs mt-1">Truck & Trailer Supplier · Container Service</p>
+                  </div>
+                  {/* Right: invoice badge */}
+                  <div className="text-right">
+                    <p className="text-2xl font-black text-white tracking-tight">INVOICE</p>
+                    <p className="text-slate-400 text-sm font-mono mt-0.5">{invoice.invoice_number}</p>
+                    <span
+                      className={`inline-flex items-center gap-1 mt-2 px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        invoice.payment_status === "paid"
+                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                          : "bg-red-500/15 text-red-400 border border-red-500/30"
+                      }`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${invoice.payment_status === "paid" ? "bg-emerald-400" : "bg-red-400"}`} />
+                      {invoice.payment_status === "paid" ? "PAID" : "UNPAID"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Meta */}
-              <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="bg-slate-900 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Party</p>
-                  <p className="text-white text-sm font-medium">{invoice.party?.name || "—"}</p>
-                  {invoice.party?.phone && <p className="text-slate-400 text-xs mt-0.5">{invoice.party.phone}</p>}
-                  {invoice.party?.email && <p className="text-slate-400 text-xs">{invoice.party.email}</p>}
+              {/* ── Party + Ride row ───────────────────────── */}
+              <div className="grid grid-cols-2 gap-4">
+                {/* Party */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 font-semibold">Billed To</p>
+                  <p className="text-white font-semibold text-sm">{invoice.party?.name || "—"}</p>
+                  {invoice.party?.phone && (
+                    <p className="text-slate-400 text-xs mt-1 flex items-center gap-1">
+                      <span className="text-slate-600">📞</span> {invoice.party.phone}
+                    </p>
+                  )}
+                  {invoice.party?.email && (
+                    <p className="text-slate-400 text-xs mt-0.5 flex items-center gap-1">
+                      <span className="text-slate-600">✉</span> {invoice.party.email}
+                    </p>
+                  )}
                 </div>
-                <div className="bg-slate-900 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Ride</p>
-                  <p className="text-white text-sm font-medium">{invoice.ride?.ride_number || "—"}</p>
-                  <p className="text-slate-400 text-xs mt-0.5">{formatDate(invoice.ride?.start_date)}</p>
+
+                {/* Ride */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-2 font-semibold">Ride Details</p>
+                  <p className="text-white font-semibold text-sm">{invoice.ride?.ride_number || "—"}</p>
+                  {invoice.ride?.start_date && (
+                    <p className="text-slate-400 text-xs mt-1">{formatDate(invoice.ride.start_date)}</p>
+                  )}
+                  {rideData?.ride?.route && (
+                    <p className="text-slate-500 text-xs mt-0.5 truncate">📍 {rideData.ride.route}</p>
+                  )}
+                  {rideData?.ride?.container_no && (
+                    <p className="text-slate-500 text-xs mt-0.5">📦 {rideData.ride.container_no}</p>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-slate-900 rounded-lg p-3">
+              {/* ── Invoice meta row ───────────────────────── */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Invoice Date</p>
-                  <p className="text-white text-sm">{formatDate(invoice.invoice_date)}</p>
+                  <p className="text-white text-sm font-medium">{formatDate(invoice.invoice_date)}</p>
                 </div>
-                <div className="bg-slate-900 rounded-lg p-3">
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
                   <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Type</p>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${invoice.invoice_type === "advance" ? "bg-blue-500/10 text-blue-400" : "bg-purple-500/10 text-purple-400"}`}>
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${
+                    invoice.invoice_type === "advance"
+                      ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                      : "bg-purple-500/15 text-purple-400 border border-purple-500/30"
+                  }`}>
                     {invoice.invoice_type}
                   </span>
                 </div>
-                <div className="bg-slate-900 rounded-lg p-3">
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Status</p>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${invoice.payment_status === "paid" ? "bg-emerald-500/10 text-emerald-400" : "bg-red-500/10 text-red-400"}`}>
-                    {invoice.payment_status}
-                  </span>
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
+                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Invoice Amount</p>
+                  <p className="text-amber-400 text-sm font-bold">
+                    Rs {formatAmount(invoice.amount)}
+                  </p>
                 </div>
               </div>
 
-              {/* Amount */}
-              <div className="bg-slate-950 rounded-xl p-5 mt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Amount</span>
-                  <span className="text-2xl font-bold text-amber-500">Rs {formatAmount(invoice.amount)}</span>
-                </div>
-                {invoice.payment_status === "paid" && invoice.payment_date && (
-                  <div className="flex justify-between mt-2">
-                    <span className="text-slate-500 text-xs">Paid on</span>
-                    <span className="text-emerald-400 text-xs">{formatDate(invoice.payment_date)}</span>
+              {/* ── Financial breakdown (from ride) ───────── */}
+              {rideData && (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-800 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <p className="text-sm font-semibold text-white">Ride Financial Summary</p>
                   </div>
-                )}
-              </div>
-
-              {invoice.description && (
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Description</p>
-                  <p className="text-slate-300 text-sm">{invoice.description}</p>
-                </div>
-              )}
-              {invoice.notes && (
-                <div>
-                  <p className="text-xs text-slate-500 uppercase tracking-wider mb-1">Notes</p>
-                  <p className="text-slate-300 text-sm">{invoice.notes}</p>
-                </div>
-              )}
-            </div>
-
-            {/* Hidden print template */}
-            <div ref={printRef} style={{ display: "none" }}>
-              <div className="inv-wrapper">
-
-                {/* Title */}
-                <div className="inv-title-block">
-                  <div className="billing-invoice">BILLING INVOICE</div>
-                  <div className="company-name">ILAYS&amp;SONS TRANSPORT</div>
-                </div>
-
-                {/* Amber banner */}
-                <div className="amber-banner">
-                  TRUCK&amp;TRAILER SUPPLIER SPECIALIST IN CONTAINER SERVICE
-                </div>
-
-                {/* Contact */}
-                <div className="contact-block">
-                  <div className="owner">KASHIF MARFANI</div>
-                  <div className="cell"><span>CELL#</span>923490953127</div>
-                </div>
-
-                {/* Party / Date / Bill row */}
-                <div className="meta-row">
-                  <div className="party-block">
-                    <label>PARTY NAME</label>
-                    <span className="underline-val">{invoice.party?.name ?? ""}</span>
-                  </div>
-                  <div className="right-block">
-                    <div className="field-line">
-                      <label>DATE</label>
-                      <span className="underline-val">
-                        {invoice.invoice_date
-                          ? new Date(invoice.invoice_date).toLocaleDateString("en-GB")
-                          : ""}
+                  <div className="p-4 space-y-2">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500">Booking Amount</span>
+                      <span className="text-white font-medium">Rs {formatAmount(bookingAmount)}</span>
+                    </div>
+                    {partyTotal > 0 && (
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500 flex items-center gap-1">
+                          <span className="text-amber-400 font-bold">+</span> Party Expenses
+                        </span>
+                        <span className="text-amber-400 font-medium">Rs {formatAmount(partyTotal)}</span>
+                      </div>
+                    )}
+                    <div className="border-t border-slate-800 pt-2 flex justify-between items-center text-sm">
+                      <span className="text-slate-300 font-semibold">Total Billable</span>
+                      <span className="text-white font-bold">Rs {formatAmount(totalBillable)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <span className="text-emerald-400 font-bold">−</span> Total Paid
                       </span>
+                      <span className="text-emerald-400 font-medium">Rs {formatAmount(totalPaid)}</span>
                     </div>
-                    <div className="field-line">
-                      <label>BILL#</label>
-                      <span className="underline-val">{invoice.invoice_number ?? ""}</span>
+                    <div className={`flex justify-between items-center text-sm pt-1 border-t border-slate-800 ${balanceDue > 0 ? "text-red-400" : "text-emerald-400"}`}>
+                      <span className="font-semibold">Balance Due</span>
+                      <span className="font-bold">Rs {formatAmount(balanceDue)}</span>
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Line-item table — 15 blank rows + the invoice as first row */}
-                <table className="inv-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: "90px" }}>DATE</th>
-                      <th style={{ width: "50px" }}>QTY</th>
-                      <th>PARTICULER</th>
-                      <th style={{ width: "80px" }}>RATE</th>
-                      <th style={{ width: "70px" }}>DETAIN</th>
-                      <th style={{ width: "90px" }}>AMOUNT</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {/* Populated row */}
-                    <tr>
-                      <td>
-                        {invoice.invoice_date
-                          ? new Date(invoice.invoice_date).toLocaleDateString("en-GB")
-                          : ""}
-                      </td>
-                      <td>1</td>
-                      <td className="left-td">
-                        {invoice.description ||
-                          (invoice.ride?.ride_number
-                            ? `Ride ${invoice.ride.ride_number}`
-                            : invoice.invoice_type)}
-                      </td>
-                      <td className="right-td">
-                        {Number(invoice.amount).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </td>
-                      <td></td>
-                      <td className="right-td">
-                        {Number(invoice.amount).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </td>
-                    </tr>
-
-                    {/* 17 empty filler rows */}
-                    {Array.from({ length: 17 }).map((_, i) => (
-                      <tr key={i}>
-                        <td></td><td></td><td></td><td></td><td></td><td></td>
-                      </tr>
+              {/* ── Party expenses table ──────────────────── */}
+              {partyExpenses.length > 0 && (
+                <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+                  <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <p className="text-sm font-semibold text-white">Party Expenses</p>
+                      <span className="text-xs text-slate-500">({partyExpenses.length})</span>
+                    </div>
+                    <span className="text-xs font-semibold text-amber-400">
+                      Rs {formatAmount(partyTotal)}
+                    </span>
+                  </div>
+                  <div className="divide-y divide-slate-800">
+                    {partyExpenses.map((exp) => (
+                      <div key={exp.id} className="flex items-center justify-between px-4 py-3">
+                        <div>
+                          <p className="text-slate-300 text-sm">{exp.expense_description || exp.description || "—"}</p>
+                          {exp.expense_date && (
+                            <p className="text-slate-600 text-xs mt-0.5">{formatDate(exp.expense_date)}</p>
+                          )}
+                        </div>
+                        <span className="text-amber-400 text-sm font-semibold">
+                          Rs {formatAmount(exp.expense_amount)}
+                        </span>
+                      </div>
                     ))}
-
-                    {/* Grand Total */}
-                    <tr className="grand-row">
-                      <td colSpan={5} className="left-td" style={{ paddingLeft: "12px" }}>
-                        GRAND TOTAL
-                      </td>
-                      <td className="right-td">
-                        {Number(invoice.amount).toLocaleString("en-US", {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                {/* Footer address */}
-                <div className="inv-footer">
-                  OFFICE#07 GROUND FLOOR KULSOOM MEHAL BUILDING KHARADAR PUNJABI CLUB KARACHI
+                  </div>
                 </div>
+              )}
 
+              {/* ── Payment info ──────────────────────────── */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-slate-500 uppercase tracking-wider">This Invoice Amount</p>
+                    <p className="text-2xl font-black text-amber-500 mt-0.5">
+                      Rs {formatAmount(invoice.amount)}
+                    </p>
+                  </div>
+                  {invoice.payment_status === "paid" && invoice.payment_date && (
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider">Paid On</p>
+                      <p className="text-emerald-400 text-sm font-semibold mt-0.5">{formatDate(invoice.payment_date)}</p>
+                    </div>
+                  )}
+                  {invoice.payment_status === "unpaid" && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold rounded-full">
+                      ⚠ Awaiting Payment
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {/* ── Description / Notes ───────────────────── */}
+              {(invoice.description || invoice.notes) && (
+                <div className="space-y-3">
+                  {invoice.description && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider mb-1.5 font-semibold">Description</p>
+                      <p className="text-slate-300 text-sm leading-relaxed">{invoice.description}</p>
+                    </div>
+                  )}
+                  {invoice.notes && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
+                      <p className="text-xs text-slate-500 uppercase tracking-wider mb-1.5 font-semibold">Notes</p>
+                      <p className="text-slate-300 text-sm leading-relaxed">{invoice.notes}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
             </div>
-          </div>
-        ) : null}
+          ) : (
+            <div className="p-12 text-center text-slate-500 text-sm">Invoice not found.</div>
+          )}
+        </div>
+
+        {/* ── Hidden print template ─────────────────────────── */}
+        <div ref={printRef} style={{ display: "none" }}>
+          {invoice && (
+            <div className="inv-wrapper">
+              <div className="inv-title-block">
+                <div className="billing-invoice">BILLING INVOICE</div>
+                <div className="company-name">ILAYS&SONS TRANSPORT</div>
+              </div>
+              <div className="amber-banner">TRUCK&amp;TRAILER SUPPLIER SPECIALIST IN CONTAINER SERVICE</div>
+              <div className="contact-block">
+                <div className="owner">KASHIF MARFANI</div>
+                <div className="cell"><span>CELL#</span>923490953127</div>
+              </div>
+              <div className="meta-row">
+                <div className="party-block">
+                  <label>PARTY NAME</label>
+                  <span className="underline-val">{invoice.party?.name ?? ""}</span>
+                </div>
+                <div className="right-block">
+                  <div className="field-line">
+                    <label>DATE</label>
+                    <span className="underline-val">
+                      {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString("en-GB") : ""}
+                    </span>
+                  </div>
+                  <div className="field-line">
+                    <label>BILL#</label>
+                    <span className="underline-val">{invoice.invoice_number ?? ""}</span>
+                  </div>
+                </div>
+              </div>
+              <table className="inv-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "90px" }}>DATE</th>
+                    <th style={{ width: "50px" }}>QTY</th>
+                    <th>PARTICULER</th>
+                    <th style={{ width: "80px" }}>RATE</th>
+                    <th style={{ width: "70px" }}>DETAIN</th>
+                    <th style={{ width: "90px" }}>AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString("en-GB") : ""}</td>
+                    <td>1</td>
+                    <td className="left-td">{invoice.description || (invoice.ride?.ride_number ? `Ride ${invoice.ride.ride_number}` : invoice.invoice_type)}</td>
+                    <td className="right-td">{Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td></td>
+                    <td className="right-td">{Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                  {Array.from({ length: 17 }).map((_, i) => (
+                    <tr key={i}><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                  ))}
+                  <tr className="grand-row">
+                    <td colSpan={5} className="left-td" style={{ paddingLeft: "12px" }}>GRAND TOTAL</td>
+                    <td className="right-td">{Number(invoice.amount).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="inv-footer">OFFICE#07 GROUND FLOOR KULSOOM MEHAL BUILDING KHARADAR PUNJABI CLUB KARACHI</div>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
