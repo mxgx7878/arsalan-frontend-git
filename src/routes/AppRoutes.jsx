@@ -32,7 +32,7 @@ export default function AppRoutes() {
         <Route path="/invoices" element={<InvoicesPage />} />
         <Route path="/vehicles" element={<VehiclesPage />} />
         <Route path="/parties" element={<PartiesPage />} />
-        <Route path="/partners" element={<PartnersPage />} />
+        <Route path="/market" element={<PartnersPage />} />
         <Route path="/company-expenses" element={<CompanyExpensesPage />} />
         <Route path="/expense-categories" element={<ExpenseCategoriesPage />} />
       </Route>

@@ -18,7 +18,7 @@ const navItems = [
   { to: "/invoices", label: "Invoices", icon: HiOutlineDocumentText },
   { to: "/vehicles", label: "Vehicle Management", icon: HiOutlineTruck },
   { to: "/parties", label: "Party Management", icon: HiOutlineUserGroup },
-  { to: "/partners", label: "Partner Management", icon: HiOutlineUsers },
+  { to: "/market", label: "Market Management", icon: HiOutlineUsers },
   { to: "/company-expenses", label: "Company Expenses", icon: HiOutlineCurrencyDollar },
   { to: "/expense-categories", label: "Expense Categories", icon: HiOutlineTag },
 ];

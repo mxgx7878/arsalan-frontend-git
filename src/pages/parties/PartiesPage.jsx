@@ -383,7 +383,7 @@ export default function PartiesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-xl font-bold text-white">Party Management</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Manage your clients and partners</p>
+          <p className="text-slate-500 text-sm mt-0.5">Manage your clients and Market</p>
         </div>
         <button
           onClick={handleAdd}
