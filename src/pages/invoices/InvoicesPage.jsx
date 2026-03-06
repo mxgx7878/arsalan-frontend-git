@@ -262,35 +262,110 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDele
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Invoice ${invoice?.invoice_number || ""}</title>
+        <title>Billing Invoice ${invoice?.invoice_number || ""}</title>
         <style>
           * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; color: #1e293b; background: #fff; }
-          .invoice-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; padding-bottom: 20px; border-bottom: 3px solid #f59e0b; }
-          .company-name { font-size: 24px; font-weight: 800; color: #0f172a; letter-spacing: 1px; }
-          .company-sub { font-size: 12px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: 2px; }
-          .invoice-title { font-size: 28px; font-weight: 700; color: #f59e0b; text-align: right; }
-          .invoice-number { font-size: 14px; color: #64748b; text-align: right; margin-top: 4px; }
-          .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px; }
-          .meta-box { background: #f8fafc; padding: 16px; border-radius: 8px; border: 1px solid #e2e8f0; }
-          .meta-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; font-weight: 600; margin-bottom: 8px; }
-          .meta-value { font-size: 14px; color: #1e293b; font-weight: 500; }
-          .meta-value-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
-          .amount-section { background: #0f172a; color: #fff; padding: 24px; border-radius: 12px; margin: 30px 0; }
-          .amount-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
-          .amount-row.total { font-size: 20px; font-weight: 700; border-top: 2px solid #334155; padding-top: 16px; margin-top: 8px; }
-          .amount-label { color: #94a3b8; }
-          .amount-value { color: #fff; font-weight: 600; }
-          .amount-row.total .amount-label { color: #f59e0b; }
-          .amount-row.total .amount-value { color: #f59e0b; }
-          .status-badge { display: inline-block; padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
-          .status-paid { background: #d1fae5; color: #065f46; }
-          .status-unpaid { background: #fee2e2; color: #991b1b; }
-          .detail-section { margin-top: 30px; }
-          .detail-title { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #94a3b8; font-weight: 600; margin-bottom: 12px; }
-          .detail-text { font-size: 14px; color: #475569; line-height: 1.6; }
-          .footer { margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8; }
-          @media print { body { padding: 20px; } }
+          body {
+            font-family: Arial, sans-serif;
+            background: #fff;
+            color: #000;
+            padding: 30px 40px;
+            font-size: 13px;
+          }
+          .inv-wrapper { max-width: 780px; margin: 0 auto; border: 1px solid #ccc; }
+
+          /* ── Top header ── */
+          .inv-title-block { text-align: center; padding: 10px 0 4px; border-bottom: 1px solid #ccc; }
+          .inv-title-block .billing-invoice { font-size: 15px; font-weight: bold; letter-spacing: 1px; }
+          .inv-title-block .company-name    { font-size: 16px; font-weight: bold; letter-spacing: 1px; margin-top: 2px; }
+
+          /* ── Amber banner ── */
+          .amber-banner {
+            background: #f59e0b;
+            color: #000;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            padding: 5px 10px;
+            letter-spacing: 0.5px;
+          }
+
+          /* ── Contact block ── */
+          .contact-block { padding: 6px 12px; border-bottom: 1px solid #ccc; }
+          .contact-block .owner  { font-weight: bold; font-size: 13px; }
+          .contact-block .cell   { font-size: 12px; margin-top: 2px; }
+          .contact-block .cell span { font-weight: bold; margin-right: 6px; }
+
+          /* ── Party / Date / Bill row ── */
+          .meta-row {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 2px solid #f59e0b;
+            gap: 12px;
+          }
+          .meta-row .party-block { flex: 1; }
+          .meta-row .party-block label { font-weight: bold; font-size: 13px; margin-right: 8px; }
+          .meta-row .party-block .underline-val {
+            display: inline-block;
+            min-width: 200px;
+            border-bottom: 1.5px solid #000;
+            font-size: 13px;
+            padding-bottom: 1px;
+          }
+          .meta-row .right-block { display: flex; flex-direction: column; gap: 5px; align-items: flex-end; }
+          .meta-row .right-block .field-line { display: flex; align-items: flex-end; gap: 6px; }
+          .meta-row .right-block .field-line label { font-weight: bold; font-size: 12px; white-space: nowrap; }
+          .meta-row .right-block .field-line .underline-val {
+            display: inline-block;
+            min-width: 130px;
+            border-bottom: 1.5px solid #000;
+            font-size: 12px;
+            padding-bottom: 1px;
+            text-align: left;
+          }
+
+          /* ── Table ── */
+          .inv-table { width: 100%; border-collapse: collapse; }
+          .inv-table th {
+            background: #fff;
+            border: 1px solid #bbb;
+            padding: 6px 8px;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
+          }
+          .inv-table td {
+            border: 1px solid #bbb;
+            padding: 5px 8px;
+            font-size: 12px;
+            text-align: center;
+            height: 22px;
+          }
+          .inv-table td.left-td  { text-align: left; }
+          .inv-table td.right-td { text-align: right; }
+          .inv-table .grand-row td {
+            font-weight: bold;
+            font-size: 13px;
+            background: #fafafa;
+          }
+
+          /* ── Footer address ── */
+          .inv-footer {
+            background: #f59e0b;
+            color: #000;
+            text-align: center;
+            font-size: 10.5px;
+            font-weight: bold;
+            padding: 5px 10px;
+            letter-spacing: 0.3px;
+          }
+
+          @media print {
+            body { padding: 10px; }
+            .inv-wrapper { border: none; }
+          }
         </style>
       </head>
       <body>
@@ -435,76 +510,116 @@ function InvoiceViewModal({ open, onClose, invoiceId, onMarkPaid, onEdit, onDele
 
             {/* Hidden print template */}
             <div ref={printRef} style={{ display: "none" }}>
-              <div className="invoice-header">
-                <div>
-                  <div className="company-name">ILAYS&SONS</div>
-                  <div className="company-sub">Transport &mdash; Specialist in Container Service</div>
-                </div>
-                <div>
-                  <div className="invoice-title">INVOICE</div>
-                  <div className="invoice-number">{invoice.invoice_number}</div>
-                </div>
-              </div>
+              <div className="inv-wrapper">
 
-              <div className="meta-grid">
-                <div className="meta-box">
-                  <div className="meta-label">Billed To</div>
-                  <div className="meta-value">{invoice.party?.name || "—"}</div>
-                  {invoice.party?.phone && <div className="meta-value-sub">{invoice.party.phone}</div>}
-                  {invoice.party?.email && <div className="meta-value-sub">{invoice.party.email}</div>}
+                {/* Title */}
+                <div className="inv-title-block">
+                  <div className="billing-invoice">BILLING INVOICE</div>
+                  <div className="company-name">ILAYS&amp;SONS TRANSPORT</div>
                 </div>
-                <div className="meta-box">
-                  <div className="meta-label">Ride Reference</div>
-                  <div className="meta-value">{invoice.ride?.ride_number || "—"}</div>
-                  <div className="meta-value-sub">Date: {formatDate(invoice.ride?.start_date)}</div>
-                </div>
-              </div>
 
-              <div className="meta-grid">
-                <div className="meta-box">
-                  <div className="meta-label">Invoice Date</div>
-                  <div className="meta-value">{formatDate(invoice.invoice_date)}</div>
+                {/* Amber banner */}
+                <div className="amber-banner">
+                  TRUCK&amp;TRAILER SUPPLIER SPECIALIST IN CONTAINER SERVICE
                 </div>
-                <div className="meta-box">
-                  <div className="meta-label">Payment Status</div>
-                  <div>
-                    <span className={`status-badge ${invoice.payment_status === "paid" ? "status-paid" : "status-unpaid"}`}>
-                      {invoice.payment_status}
-                    </span>
+
+                {/* Contact */}
+                <div className="contact-block">
+                  <div className="owner">KASHIF MARFANI</div>
+                  <div className="cell"><span>CELL#</span>923490953127</div>
+                </div>
+
+                {/* Party / Date / Bill row */}
+                <div className="meta-row">
+                  <div className="party-block">
+                    <label>PARTY NAME</label>
+                    <span className="underline-val">{invoice.party?.name ?? ""}</span>
                   </div>
-                  {invoice.payment_status === "paid" && invoice.payment_date && (
-                    <div className="meta-value-sub" style={{ marginTop: "8px" }}>Paid on: {formatDate(invoice.payment_date)}</div>
-                  )}
+                  <div className="right-block">
+                    <div className="field-line">
+                      <label>DATE</label>
+                      <span className="underline-val">
+                        {invoice.invoice_date
+                          ? new Date(invoice.invoice_date).toLocaleDateString("en-GB")
+                          : ""}
+                      </span>
+                    </div>
+                    <div className="field-line">
+                      <label>BILL#</label>
+                      <span className="underline-val">{invoice.invoice_number ?? ""}</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div className="amount-section">
-                <div className="amount-row">
-                  <span className="amount-label">Invoice Type</span>
-                  <span className="amount-value" style={{ textTransform: "capitalize" }}>{invoice.invoice_type}</span>
-                </div>
-                <div className="amount-row total">
-                  <span className="amount-label">Total Amount</span>
-                  <span className="amount-value">Rs {formatAmount(invoice.amount)}</span>
-                </div>
-              </div>
+                {/* Line-item table — 15 blank rows + the invoice as first row */}
+                <table className="inv-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: "90px" }}>DATE</th>
+                      <th style={{ width: "50px" }}>QTY</th>
+                      <th>PARTICULER</th>
+                      <th style={{ width: "80px" }}>RATE</th>
+                      <th style={{ width: "70px" }}>DETAIN</th>
+                      <th style={{ width: "90px" }}>AMOUNT</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Populated row */}
+                    <tr>
+                      <td>
+                        {invoice.invoice_date
+                          ? new Date(invoice.invoice_date).toLocaleDateString("en-GB")
+                          : ""}
+                      </td>
+                      <td>1</td>
+                      <td className="left-td">
+                        {invoice.description ||
+                          (invoice.ride?.ride_number
+                            ? `Ride ${invoice.ride.ride_number}`
+                            : invoice.invoice_type)}
+                      </td>
+                      <td className="right-td">
+                        {Number(invoice.amount).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                      <td></td>
+                      <td className="right-td">
+                        {Number(invoice.amount).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                    </tr>
 
-              {invoice.description && (
-                <div className="detail-section">
-                  <div className="detail-title">Description</div>
-                  <div className="detail-text">{invoice.description}</div>
-                </div>
-              )}
+                    {/* 17 empty filler rows */}
+                    {Array.from({ length: 17 }).map((_, i) => (
+                      <tr key={i}>
+                        <td></td><td></td><td></td><td></td><td></td><td></td>
+                      </tr>
+                    ))}
 
-              {invoice.notes && (
-                <div className="detail-section">
-                  <div className="detail-title">Notes</div>
-                  <div className="detail-text">{invoice.notes}</div>
-                </div>
-              )}
+                    {/* Grand Total */}
+                    <tr className="grand-row">
+                      <td colSpan={5} className="left-td" style={{ paddingLeft: "12px" }}>
+                        GRAND TOTAL
+                      </td>
+                      <td className="right-td">
+                        {Number(invoice.amount).toLocaleString("en-US", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <div className="footer">
-                &copy; {new Date().getFullYear()} Ilays&Sons Transport. All rights reserved.
+                {/* Footer address */}
+                <div className="inv-footer">
+                  OFFICE#07 GROUND FLOOR KULSOOM MEHAL BUILDING KHARADAR PUNJABI CLUB KARACHI
+                </div>
+
               </div>
             </div>
           </div>
