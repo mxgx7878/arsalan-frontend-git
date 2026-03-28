@@ -10,19 +10,21 @@ import {
   HiOutlineCurrencyDollar,
   HiOutlineTag,
   HiOutlineReceiptTax,
+  HiOutlineChartBar,
 } from "react-icons/hi";
 import useAuth from "../../hooks/useAuth";
 
 const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: HiOutlineHome },
-  { to: "/rides", label: "Ride Management", icon: HiOutlineMap },
-  { to: "/invoices", label: "Invoices", icon: HiOutlineDocumentText },
-  { to: "/vehicles", label: "Vehicle Management", icon: HiOutlineTruck },
-  { to: "/vehicle-expenses", label: "Vehicle Expenses", icon: HiOutlineReceiptTax },
-  { to: "/parties", label: "Party Management", icon: HiOutlineUserGroup },
-  { to: "/market", label: "Market Management", icon: HiOutlineUsers },
-  { to: "/company-expenses", label: "Company Expenses", icon: HiOutlineCurrencyDollar },
+  { to: "/dashboard",         label: "Dashboard",          icon: HiOutlineHome },
+  { to: "/rides",             label: "Ride Management",    icon: HiOutlineMap },
+  { to: "/invoices",          label: "Invoices",           icon: HiOutlineDocumentText },
+  { to: "/vehicles",          label: "Vehicle Management", icon: HiOutlineTruck },
+  { to: "/vehicle-expenses",  label: "Vehicle Expenses",   icon: HiOutlineReceiptTax },
+  { to: "/parties",           label: "Party Management",   icon: HiOutlineUserGroup },
+  { to: "/market",            label: "Market Management",  icon: HiOutlineUsers },
+  { to: "/company-expenses",  label: "Company Expenses",   icon: HiOutlineCurrencyDollar },
   { to: "/expense-categories", label: "Expense Categories", icon: HiOutlineTag },
+  { to: "/reports",           label: "Reports",            icon: HiOutlineChartBar },
 ];
 
 export default function Sidebar({ open, onClose }) {

@@ -10,6 +10,7 @@ import InvoicesPage from "../pages/invoices/InvoicesPage";
 import CompanyExpensesPage from "../pages/company-expenses/CompanyExpensesPage";
 import ExpenseCategoriesPage from "../pages/expense-categories/ExpenseCategoriesPage";
 import VehicleExpensesPage from "../pages/vehicle-expenses/VehicleExpensesPage";
+import ReportsPage from "../pages/reports/ReportsPage";
 import MainLayout from "../components/layout/MainLayout";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -37,6 +38,9 @@ export default function AppRoutes() {
         <Route path="/market" element={<PartnersPage />} />
         <Route path="/company-expenses" element={<CompanyExpensesPage />} />
         <Route path="/expense-categories" element={<ExpenseCategoriesPage />} />
+
+        {/* Reports — all 11 report tabs live under this single route */}
+        <Route path="/reports" element={<ReportsPage />} />
       </Route>
 
       {/* Fallback */}
